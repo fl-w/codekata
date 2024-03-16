@@ -1,9 +1,21 @@
-package com.fl_w.checkout
+package com.fl_w.kata09
 
 import kotlin.collections.HashMap
 import kotlin.collections.sumOf
 
-data class Promo(val count: Int, val price: Int)
+interface Promo {
+    fun calcPrice(unitPrice: Int, count: Int,): Int
+}
+
+class MultiBuyPromo(val quantity: Int, val price: Int) : Promo {
+
+    override fun calcPrice(unitPrice: Int, count: Int): Int {
+        val bundles = count / quantity
+        val remaining = count % quantity
+        return (bundles * price) + (remaining * unitPrice)
+    }
+
+}
 
 class Checkout(
         private val catalog: PriceCatalog = PriceCatalog(),
@@ -29,25 +41,24 @@ class PriceCatalog {
 
     fun addPricingRule(sku: Char, price: Int, promo: Promo? = null): PriceCatalog {
         unitPrices[sku] = price
-        promo?.let {
-            promos.put(sku, it)
-        }
+        promo?.let { promos.put(sku, it) }
 
         return this
     }
 
-    fun getPrice(sku: Char, count: Int): Int {
-        val price = unitPrices[sku] ?: throw IllegalArgumentException("Price for SKU $sku not found")
-        promos[sku]?.let {
-            val bundles = count / it.count
-            val remaining = count % it.count
-            return (bundles * it.price) + (remaining * price)
-        }
+    fun addPromo(sku: Char, promo: Promo): PriceCatalog {
+        promos.put(sku, promo)
+        return this
+    }
 
-        return price * count
+    fun getPrice(sku: Char, count: Int): Int {
+        val price = unitPrices[sku]
+            ?: throw IllegalArgumentException("Price for SKU $sku not found")
+        return promos[sku]?.calcPrice(price, count) ?: price * count
     }
 
     fun containsSku(sku: Char): Boolean {
         return unitPrices.containsKey(sku)
     }
 }
+
